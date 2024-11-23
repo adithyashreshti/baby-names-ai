@@ -39,7 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     Return as a JSON array.`
             }],
             temperature: 0.7,
-            max_tokens: 1000
+            max_tokens: 2000
         });
 
         const response = completion.choices[0].message?.content;
