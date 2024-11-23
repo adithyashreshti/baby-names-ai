@@ -12,12 +12,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
         const { name } = req.body;
+        console.log('Analyzing numerology for name:', name);
 
         const completion = await openai.chat.completions.create({
-            model: "gpt-4",
+            model: "gpt-3.5-turbo",
             messages: [{ 
                 role: "user", 
-                content: `Provide a detailed numerological analysis for the name "${name}"...` // rest of the prompt
+                content: `Provide a detailed numerological analysis for the name "${name}".
+                    Include:
+                    1. Calculate the numerological number (1-9)
+                    2. The spiritual and metaphysical meaning
+                    3. Key personality characteristics
+                    4. Life path implications
+                    5. References to traditional numerology sources
+                    
+                    Format exactly as this JSON structure:
+                    {
+                        "number": <number 1-9>,
+                        "meaning": "<detailed meaning>",
+                        "characteristics": "<key traits>",
+                        "lifePath": "<life path description>",
+                        "references": [
+                            {
+                                "source": "<source name>",
+                                "link": "<reference URL>",
+                                "description": "<brief description>"
+                            }
+                        ]
+                    }`
             }],
             temperature: 0.7
         });
@@ -27,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         return res.status(200).json(numerologyInfo);
     } catch (error: any) {
-        console.error('Error:', error.response?.data || error.message);
+        console.error('Error:', error);
         return res.status(500).json({ 
             error: 'Failed to generate numerology information',
             details: error.message 
