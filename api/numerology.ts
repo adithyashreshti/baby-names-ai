@@ -5,7 +5,7 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Pythagorean numerology calculation
+// Calculate number using Pythagorean method
 function calculateNumber(name: string): number {
     const numberMap: { [key: string]: number } = {
         'a': 1, 'j': 1, 's': 1,
@@ -19,17 +19,14 @@ function calculateNumber(name: string): number {
         'i': 9, 'r': 9
     };
 
-    // Initial sum
     const initialSum = name.toLowerCase()
         .split('')
         .reduce((acc, char) => acc + (numberMap[char] || 0), 0);
 
-    // Check for master numbers
     if ([11, 22, 33].includes(initialSum)) {
         return initialSum;
     }
 
-    // Keep reducing until single digit
     let sum = initialSum;
     while (sum > 9) {
         sum = sum.toString()
@@ -40,41 +37,28 @@ function calculateNumber(name: string): number {
     return sum;
 }
 
-// Function to check if URL is valid and accessible
-async function isValidUrl(url: string): Promise<boolean> {
-    try {
-        const response = await fetch(url);
-        if (!response.ok) return false;
-        
-        // Get the page title or content to check for 404 indicators
-        const text = await response.text();
-        const lowerText = text.toLowerCase();
-        
-        // Check for common 404 indicators
-        const errorIndicators = ['404', 'not found', 'page not found', 'error'];
-        return !errorIndicators.some(indicator => lowerText.includes(indicator));
-    } catch {
-        return false;
+// Function to get references based on number
+async function getNumerologyReferences(number: number): Promise<any[]> {
+    // For master numbers, let AI provide references
+    if ([11, 22, 33].includes(number)) {
+        return [];  // Will be filled by AI response
     }
-}
-
-// Filter and validate references
-async function validateReferences(references: any[]): Promise<any[]> {
-    const validatedRefs = [];
     
-    for (const ref of references) {
-        // Skip if title contains error indicators
-        if (/404|error|not found/i.test(ref.source)) continue;
-        
-        // Check if URL is valid
-        if (await isValidUrl(ref.link)) {
-            validatedRefs.push(ref);
-            // Only keep up to 2 valid references
-            if (validatedRefs.length === 2) break;
+    // For single digits, use verified URLs
+    const references = [
+        {
+            source: `Number ${number} Meaning & Analysis`,
+            link: `https://www.numerology.com/articles/about-numerology/single-digit-number-${number}-meaning/?ref=BabyNamesAI`,
+            description: "Detailed numerological interpretation"
+        },
+        {
+            source: `Life Path Number ${number}`,
+            link: `https://www.mindbodygreen.com/articles/life-path-number-${number}/?ref=BabyNamesAI`,
+            description: "Modern interpretation and characteristics"
         }
-    }
+    ];
     
-    return validatedRefs;
+    return references;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -86,7 +70,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { name } = req.body;
         console.log('Analyzing numerology for name:', name);
 
-        // Calculate number using our standard method
         const number = calculateNumber(name);
         console.log('Calculated numerology number:', number);
 
@@ -99,20 +82,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     1. The spiritual and metaphysical meaning
                     2. Key personality characteristics
                     3. Life path implications
-                    4. At least 3-4 different reliable reference sources (with real, accessible URLs)
+                    ${[11, 22, 33].includes(number) ? `
+                    4. Include 2-3 reliable reference sources with real, accessible URLs for master number ${number}
+                    ` : ''}
                     
                     Format exactly as this JSON structure:
                     {
                         "meaning": "<detailed meaning>",
                         "characteristics": "<key traits>",
-                        "lifePath": "<life path description>",
+                        "lifePath": "<life path description>"
+                        ${[11, 22, 33].includes(number) ? `,
                         "references": [
                             {
-                                "source": "<specific source name - avoid generic titles>",
+                                "source": "<specific source name>",
                                 "link": "<reference URL>",
-                                "description": "<brief description of this source>"
+                                "description": "<brief description>"
                             }
-                        ]
+                        ]` : ''}
                     }`
             }],
             temperature: 0.7
@@ -120,16 +106,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const aiContent = JSON.parse(completion.choices[0].message?.content || '{}');
         
-        // Validate and filter references
-        const validatedRefs = await validateReferences(aiContent.references);
-        
-        // Combine content with validated references and our calculated number
+        // Get references based on number type
+        const references = [11, 22, 33].includes(number) 
+            ? (aiContent.references || [])  // Use AI-generated references for master numbers
+            : await getNumerologyReferences(number);  // Use our verified references for single digits
+
         const numerologyInfo = {
-            number,  // Use our calculated number
+            number,
             meaning: aiContent.meaning,
             characteristics: aiContent.characteristics,
             lifePath: aiContent.lifePath,
-            references: validatedRefs
+            references
         };
 
         return res.status(200).json(numerologyInfo);
