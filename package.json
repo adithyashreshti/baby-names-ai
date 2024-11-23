@@ -1,0 +1,9 @@
+{
+  "name": "baby-names-ai-backend",
+  "version": "1.0.0",
+  "dependencies": {
+    "@vercel/node": "^3.0.0",
+    "openai": "^4.0.0",
+    "dotenv": "^16.0.0"
+  }
+}
