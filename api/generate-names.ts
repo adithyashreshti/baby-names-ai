@@ -19,7 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             model: "gpt-3.5-turbo",
             messages: [{ 
                 role: "user", 
-                content: `Generate 3 unique baby names based on these criteria:
+                content: `Generate 5 unique baby names based on these criteria:
                     Gender: ${gender}
                     Origin: ${origin}
                     Characteristics: ${nameExpectations}
