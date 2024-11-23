@@ -20,7 +20,8 @@ function calculateNumber(name: string): number {
     };
 
     // Initial sum
-    const initialSum = name.toLowerCase().split('')
+    const initialSum = name.toLowerCase()
+        .split('')
         .reduce((acc, char) => acc + (numberMap[char] || 0), 0);
 
     // Check for master numbers
@@ -37,6 +38,43 @@ function calculateNumber(name: string): number {
     }
 
     return sum;
+}
+
+// Function to check if URL is valid and accessible
+async function isValidUrl(url: string): Promise<boolean> {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) return false;
+        
+        // Get the page title or content to check for 404 indicators
+        const text = await response.text();
+        const lowerText = text.toLowerCase();
+        
+        // Check for common 404 indicators
+        const errorIndicators = ['404', 'not found', 'page not found', 'error'];
+        return !errorIndicators.some(indicator => lowerText.includes(indicator));
+    } catch {
+        return false;
+    }
+}
+
+// Filter and validate references
+async function validateReferences(references: any[]): Promise<any[]> {
+    const validatedRefs = [];
+    
+    for (const ref of references) {
+        // Skip if title contains error indicators
+        if (/404|error|not found/i.test(ref.source)) continue;
+        
+        // Check if URL is valid
+        if (await isValidUrl(ref.link)) {
+            validatedRefs.push(ref);
+            // Only keep up to 2 valid references
+            if (validatedRefs.length === 2) break;
+        }
+    }
+    
+    return validatedRefs;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -61,6 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     1. The spiritual and metaphysical meaning
                     2. Key personality characteristics
                     3. Life path implications
+                    4. At least 3-4 different reliable reference sources (with real, accessible URLs)
                     
                     Format exactly as this JSON structure:
                     {
@@ -69,9 +108,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         "lifePath": "<life path description>",
                         "references": [
                             {
-                                "source": "Pythagorean Numerology",
-                                "link": "https://example.com/pythagoras",
-                                "description": "Ancient Greek system of numerology"
+                                "source": "<specific source name - avoid generic titles>",
+                                "link": "<reference URL>",
+                                "description": "<brief description of this source>"
                             }
                         ]
                     }`
@@ -80,11 +119,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
 
         const aiContent = JSON.parse(completion.choices[0].message?.content || '{}');
-
-        // Combine our calculated number with AI content
+        
+        // Validate and filter references
+        const validatedRefs = await validateReferences(aiContent.references);
+        
+        // Combine content with validated references and our calculated number
         const numerologyInfo = {
             number,  // Use our calculated number
-            ...aiContent  // Spread AI-generated content
+            meaning: aiContent.meaning,
+            characteristics: aiContent.characteristics,
+            lifePath: aiContent.lifePath,
+            references: validatedRefs
         };
 
         return res.status(200).json(numerologyInfo);
