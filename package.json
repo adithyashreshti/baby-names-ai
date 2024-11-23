@@ -7,10 +7,6 @@
     "dotenv": "^16.0.0"
   },
   "engines": {
-    "node": ">=18.0.0"
-  },
-  "scripts": {
-    "start": "vercel dev",
-    "deploy": "vercel deploy"
+    "node": "18.x"
   }
 }
