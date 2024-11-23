@@ -19,11 +19,24 @@ function calculateNumber(name: string): number {
         'i': 9, 'r': 9
     };
 
-    const sum = name.toLowerCase().split('')
+    // Initial sum
+    const initialSum = name.toLowerCase().split('')
         .reduce((acc, char) => acc + (numberMap[char] || 0), 0);
 
-    // Reduce to single digit (except 11, 22, 33)
-    return sum > 33 ? (sum - 1) % 9 + 1 : sum;
+    // Check for master numbers
+    if ([11, 22, 33].includes(initialSum)) {
+        return initialSum;
+    }
+
+    // Keep reducing until single digit
+    let sum = initialSum;
+    while (sum > 9) {
+        sum = sum.toString()
+            .split('')
+            .reduce((acc, digit) => acc + parseInt(digit), 0);
+    }
+
+    return sum;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -39,7 +52,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const number = calculateNumber(name);
         console.log('Calculated numerology number:', number);
 
-        // Get AI-generated content for the calculated number
         const completion = await openai.chat.completions.create({
             model: "gpt-3.5-turbo",
             messages: [{ 
