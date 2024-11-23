@@ -12,8 +12,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
-        const { gender, origin, nameExpectations } = req.body;
-        console.log('Received request:', { gender, origin, nameExpectations });
+        const { 
+            gender, 
+            origin, 
+            likedNames,     // Add these fields
+            dislikedNames,  // from user input
+            nameExpectations 
+        } = req.body;
+        
+        console.log('Received request:', { 
+            gender, 
+            origin, 
+            likedNames, 
+            dislikedNames, 
+            nameExpectations 
+        });
 
         const completion = await openai.chat.completions.create({
             model: "gpt-3.5-turbo",
@@ -22,7 +35,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 content: `Generate 5 unique baby names based on these criteria:
                     Gender: ${gender}
                     Origin: ${origin}
-                    Characteristics: ${nameExpectations}
+                    Names they like: ${likedNames}
+                    Names to avoid: ${dislikedNames}
+                    Additional characteristics: ${nameExpectations}
+                    
+                    Consider:
+                    1. Generate names similar in style to the liked names
+                    2. Avoid names similar to the disliked names
+                    3. Match the specified characteristics
+                    4. Ensure names fit the cultural origin
                     
                     For each name, provide these exact fields:
                     - name (string)
