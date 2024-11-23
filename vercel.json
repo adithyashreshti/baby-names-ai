@@ -1,17 +1,26 @@
 {
+  "version": 2,
   "functions": {
-    "api/generate-names.ts": {
-      "maxDuration": 60
-    },
-    "api/numerology.ts": {
+    "api/*.ts": {
+      "memory": 1024,
       "maxDuration": 60
     }
   },
-  "version": 2,
-  "builds": [
-    { "src": "api/**/*.ts", "use": "@vercel/node" }
-  ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" }
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1",
+      "methods": ["GET", "POST", "OPTIONS"]
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
+      ]
+    }
   ]
 }
