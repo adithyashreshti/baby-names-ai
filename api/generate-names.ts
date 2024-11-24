@@ -15,8 +15,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { 
             gender, 
             origin, 
-            likedNames,     // Add these fields
-            dislikedNames,  // from user input
+            likedNames,
+            dislikedNames,
             nameExpectations 
         } = req.body;
         
@@ -50,12 +50,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     - gender (string, either "boy" or "girl")
                     - origin (string, either "indian" or "western")
                     - details object containing:
-                        - popularity (string)
-                        - style (string)
-                        - etymology (string)
-                        - historicalSignificance (string)
-                        - variants (array of strings)
+                        - popularity (string, describe current popularity)
+                        - style (string, describe name style)
+                        - etymology (string, provide detailed meaning and linguistic origin)
+                        - historicalSignificance (string, provide detailed cultural or historical context)
+                        - variants (array of strings, include at least 2-3 variations or spellings)
                         - famousPeople (array of objects with name and description)
+                            Example format:
+                            "famousPeople": [
+                                {
+                                    "name": "Full Name",
+                                    "description": "Detailed description of their achievements and significance"
+                                },
+                                {
+                                    "name": "Another Person",
+                                    "description": "Their notable contributions and importance"
+                                }
+                            ]
+                    
+                    Important:
+                    1. Provide detailed historical significance, not just "N/A"
+                    2. Include at least 2 famous people for each name when available
+                    3. List multiple name variants when they exist
+                    4. Ensure all information is culturally accurate
                     
                     Return as a JSON array.`
             }],
