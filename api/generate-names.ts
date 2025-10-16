@@ -17,7 +17,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             origin, 
             likedNames,
             dislikedNames,
-            nameExpectations 
+            nameExpectations,
+            requestId,
+            timestamp,
+            randomSeed,
+            forceVariety,
+            excludePrevious
         } = req.body;
         
         console.log('Received request:', { 
@@ -25,25 +30,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             origin, 
             likedNames, 
             dislikedNames, 
-            nameExpectations 
+            nameExpectations,
+            requestId,
+            timestamp,
+            randomSeed,
+            forceVariety,
+            excludePrevious
         });
+
+        // Generate a unique seed for this request to ensure variety
+        const requestSeed = randomSeed || Math.floor(Math.random() * 10000);
+        const varietyPrompt = forceVariety === 'true' ? 
+            `\n\nIMPORTANT FOR VARIETY: Generate completely different and unique names. 
+            This is request #${requestId} at ${timestamp}. 
+            Be creative and surprise with unexpected but fitting choices.
+            Mix different popularity levels (some popular, some rare, some trending).
+            Vary the styles (traditional, modern, classic, trendy, elegant).
+            Ensure maximum diversity and avoid any repetitive patterns.` : '';
 
         const completion = await openai.chat.completions.create({
             model: "gpt-3.5-turbo",
             messages: [{ 
                 role: "user", 
-                content: `Generate 5 unique baby names based on these criteria:
+                content: `Generate 5 completely unique and diverse baby names based on these criteria:
                     Gender: ${gender}
                     Origin: ${origin}
                     Names they like: ${likedNames}
                     Names to avoid: ${dislikedNames}
                     Additional characteristics: ${nameExpectations}
+                    ${varietyPrompt}
                     
                     Consider:
                     1. Generate names similar in style to the liked names
                     2. Avoid names similar to the disliked names
                     3. Match the specified characteristics
                     4. Ensure names fit the cultural origin
+                    5. Prioritize variety and uniqueness over predictability
+                    6. Mix different popularity levels and styles for diversity
                     
                     For each name, provide these exact fields:
                     - name (string)
@@ -73,11 +96,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     2. Include at least 2 famous people for each name when available
                     3. List multiple name variants when they exist
                     4. Ensure all information is culturally accurate
+                    5. Generate fresh, diverse names that are completely different from any previous suggestions
                     
                     Return as a JSON array.`
             }],
-            temperature: 0.7,
-            max_tokens: 2000
+            temperature: 0.9,
+            max_tokens: 2500
         });
 
         const response = completion.choices[0].message?.content;
