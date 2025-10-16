@@ -100,7 +100,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     
                     Return as a JSON array.`
             }],
-            temperature: 0.9,
+            temperature: 0.95,
             max_tokens: 2500
         });
 
