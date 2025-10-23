@@ -70,41 +70,23 @@ function validateInput(input: any): { isValid: boolean; error?: string } {
     return { isValid: true };
 }
 
-// AI-powered validation function
-async function validateInputsWithAI(nameExpectations: string, likedNames: string, dislikedNames: string) {
+// Simple AI intent validation
+async function validateIntentWithAI(nameExpectations: string, likedNames: string, dislikedNames: string) {
     try {
-        const validationPrompt = `You are a content validator for a baby names app. Analyze the following user inputs and determine if they're appropriate for baby name preferences.
+        const validationPrompt = `Analyze if this user input is about baby names or something else.
 
-NAME EXPECTATIONS: "${nameExpectations}"
-LIKED NAMES: "${likedNames}"
+USER INPUT: "${nameExpectations}"
+LIKED NAMES: "${likedNames}"  
 DISLIKED NAMES: "${dislikedNames}"
 
-VALIDATION CRITERIA:
-1. Are these inputs related to baby names, parenting, or family preferences?
-2. Is the user asking for help with baby name selection, meaning, origin, or characteristics?
-3. Are these inputs appropriate for a family-friendly app?
-4. Is the user trying to misuse the app for non-baby-name purposes (homework, programming, academic questions, etc.)?
+Is the user asking for help with baby name selection? Or are they asking about something unrelated like homework, programming, math, science, etc.?
 
-EXAMPLES OF VALID INPUTS:
-- "Looking for a traditional Indian name with spiritual meaning"
-- "Want something modern and trendy for a girl"
-- "Prefer names that are easy to pronounce"
-- "Looking for names that mean strength or courage"
-
-EXAMPLES OF INVALID INPUTS:
-- "How to calculate the speed of light"
-- "Write a Python function to sort arrays"
-- "What's the weather like today?"
-- "Help me with my math homework"
-
-RESPOND WITH JSON ONLY:
+Respond with JSON only:
 {
   "isValid": true/false,
-  "error": "Brief explanation if invalid",
-  "suggestions": ["helpful suggestions if invalid"]
-}
-
-Be strict but fair. Focus on intent rather than keywords.`;
+  "error": "Please focus on baby name preferences. Describe what you want in a name instead.",
+  "suggestions": ["Try: 'Looking for a name that means strength and courage'", "Try: 'Want something modern and elegant'"]
+}`;
 
         const completion = await openai.chat.completions.create({
             model: "gpt-3.5-turbo",
@@ -113,7 +95,7 @@ Be strict but fair. Focus on intent rather than keywords.`;
                 content: validationPrompt
             }],
             temperature: 0.1,
-            max_tokens: 200
+            max_tokens: 150
         });
 
         const response = completion.choices[0].message?.content;
@@ -122,8 +104,8 @@ Be strict but fair. Focus on intent rather than keywords.`;
         return validationResult;
     } catch (error) {
         console.error('AI validation error:', error);
-        // Fallback to basic validation
-        return validateInput(nameExpectations);
+        // If AI fails, allow the request through
+        return { isValid: true };
     }
 }
 
@@ -180,12 +162,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             excludePrevious
         });
 
-        // Validate inputs using AI-powered validation
-        const validationResult = await validateInputsWithAI(nameExpectations, likedNames, dislikedNames);
-        if (!validationResult.isValid) {
+        // Use AI to validate intent directly
+        const intentValidation = await validateIntentWithAI(nameExpectations, likedNames, dislikedNames);
+        if (!intentValidation.isValid) {
             return res.status(400).json({ 
-                error: validationResult.error,
-                suggestions: validationResult.suggestions 
+                error: intentValidation.error,
+                suggestions: intentValidation.suggestions 
             });
         }
 
