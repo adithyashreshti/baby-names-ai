@@ -123,6 +123,48 @@ Respond with JSON only:
     }
 }
 
+// Optimize user input for better name generation
+async function optimizeUserInput(nameExpectations: string, likedNames: string, dislikedNames: string) {
+    try {
+        const optimizationPrompt = `You are an expert at understanding baby name preferences. Rephrase and enhance the user's input to be more specific and helpful for generating baby names.
+
+USER INPUT:
+- Name Expectations: "${nameExpectations}"
+- Liked Names: "${likedNames}"
+- Disliked Names: "${dislikedNames}"
+
+Your task:
+1. Rephrase the name expectations to be more specific and actionable
+2. Enhance it with relevant baby name characteristics
+3. Make it clear what kind of names to generate
+4. Keep the original intent but make it more detailed
+
+Examples:
+- "Someone who loves travelling" → "Looking for names that represent adventure, exploration, wanderlust, and a love for discovering new places"
+- "A name that means strength" → "Seeking names that embody strength, courage, resilience, and inner power"
+- "Want something modern" → "Prefer contemporary, trendy names that sound fresh and current"
+
+Respond with just the optimized name expectations text, nothing else.`;
+
+        const completion = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [{ 
+                role: "user", 
+                content: optimizationPrompt
+            }],
+            temperature: 0.3,
+            max_tokens: 200
+        });
+
+        const optimizedResponse = completion.choices[0].message?.content?.trim();
+        return optimizedResponse || nameExpectations; // Fallback to original if optimization fails
+        
+    } catch (error) {
+        console.error('Input optimization error:', error);
+        return nameExpectations; // Fallback to original input
+    }
+}
+
 function parseValidationResponse(response: string): any {
     try {
         const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -191,6 +233,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         console.log('✅ AI validation passed');
 
+        // Optimize and rephrase the user input for better name generation
+        console.log('🔄 Optimizing user input...');
+        const optimizedInput = await optimizeUserInput(nameExpectations, likedNames, dislikedNames);
+        console.log('🔄 Optimized input:', optimizedInput);
+
         // Generate a unique seed for this request to ensure variety
         const requestSeed = randomSeed || Math.floor(Math.random() * 10000);
         const varietyPrompt = forceVariety === 'true' ? 
@@ -210,7 +257,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     Origin: ${origin}
                     Names they like: ${likedNames}
                     Names to avoid: ${dislikedNames}
-                    Additional characteristics: ${nameExpectations}
+                    Additional characteristics: ${optimizedInput}
                     ${varietyPrompt}
                     
                     Consider:
@@ -263,7 +310,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const names = JSON.parse(response || '[]');
         console.log('Parsed names:', names);
 
-        return res.status(200).json(names);
+        // Include optimization info in response for debugging
+        const responseWithOptimization = {
+            names: names,
+            optimization: {
+                originalInput: nameExpectations,
+                optimizedInput: optimizedInput,
+                wasOptimized: optimizedInput !== nameExpectations
+            }
+        };
+
+        return res.status(200).json(responseWithOptimization);
     } catch (error: any) {
         console.error('Error:', error);
         return res.status(500).json({ 
