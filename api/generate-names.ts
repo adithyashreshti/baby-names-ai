@@ -71,7 +71,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     For each name, provide these exact fields:
                     - name (string)
                     - gender (string, either "boy" or "girl")
-                    - origin (string, either "indian" or "western")
+                    - origin (string, MUST be lowercase: "indian" or "western" - NOT "Indian" or "Western")
                     - details object containing:
                         - popularity (string, describe current popularity)
                         - style (string, describe name style)
