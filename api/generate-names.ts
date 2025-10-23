@@ -73,11 +73,23 @@ function validateInput(input: any): { isValid: boolean; error?: string } {
 // Simple AI intent validation
 async function validateIntentWithAI(nameExpectations: string, likedNames: string, dislikedNames: string) {
     try {
-        const validationPrompt = `Is this user input about baby name preferences or something else?
+        const validationPrompt = `You are validating user input for a baby names app. Determine if the user is asking for help with baby name selection.
 
 USER INPUT: "${nameExpectations}"
 LIKED NAMES: "${likedNames}"  
 DISLIKED NAMES: "${dislikedNames}"
+
+The user is asking for baby name help if they describe:
+- Personality traits they want in a name
+- Characteristics they want their child to have
+- What they want the name to represent
+- Travel, adventure, strength, courage, etc. are all valid traits for names
+
+Only block if they're clearly asking about:
+- Homework, programming, math, science
+- Unrelated topics like weather, news, etc.
+
+Be very permissive. If it could relate to baby names or personality traits, allow it.
 
 Respond with JSON only:
 {
@@ -86,6 +98,7 @@ Respond with JSON only:
   "suggestions": ["Try: 'Looking for a name that means strength and courage'", "Try: 'Want something modern and elegant'"]
 }`;
 
+        console.log('🤖 Sending to AI for validation...');
         const completion = await openai.chat.completions.create({
             model: "gpt-3.5-turbo",
             messages: [{ 
@@ -97,7 +110,10 @@ Respond with JSON only:
         });
 
         const response = completion.choices[0].message?.content;
+        console.log('🤖 AI response:', response);
+        
         const validationResult = parseValidationResponse(response || '');
+        console.log('🤖 Parsed validation result:', validationResult);
         
         return validationResult;
     } catch (error) {
@@ -161,13 +177,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
 
         // Use AI to validate intent directly
+        console.log('🔍 Starting AI validation...');
         const intentValidation = await validateIntentWithAI(nameExpectations, likedNames, dislikedNames);
+        console.log('🔍 AI validation result:', intentValidation);
+        
         if (!intentValidation.isValid) {
+            console.log('❌ AI validation failed:', intentValidation.error);
             return res.status(400).json({ 
                 error: intentValidation.error,
                 suggestions: intentValidation.suggestions 
             });
         }
+        
+        console.log('✅ AI validation passed');
 
         // Generate a unique seed for this request to ensure variety
         const requestSeed = randomSeed || Math.floor(Math.random() * 10000);
