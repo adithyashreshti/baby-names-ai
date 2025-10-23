@@ -6,6 +6,148 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Input validation function
+function validateInput(input: any): { isValid: boolean; error?: string } {
+    // Check for inappropriate keywords
+    const inappropriateKeywords = [
+        'formula', 'equation', 'calculate', 'math', 'physics', 'chemistry', 'biology',
+        'homework', 'assignment', 'test', 'exam', 'quiz', 'solve', 'problem',
+        'code', 'programming', 'debug', 'function', 'algorithm', 'database',
+        'hack', 'crack', 'bypass', 'exploit', 'virus', 'malware',
+        'spam', 'scam', 'fraud', 'phishing', 'illegal', 'unlawful',
+        'adult', 'explicit', 'nsfw', 'porn', 'sexual', 'inappropriate',
+        'violence', 'weapon', 'gun', 'knife', 'bomb', 'threat',
+        'drug', 'alcohol', 'smoke', 'cigarette', 'marijuana',
+        'gambling', 'bet', 'casino', 'lottery', 'poker'
+    ];
+    
+    const offTopicKeywords = [
+        'speed of light', 'einstein', 'relativity', 'quantum', 'nuclear',
+        'stock market', 'cryptocurrency', 'bitcoin', 'investment',
+        'cooking recipe', 'restaurant', 'food', 'recipe',
+        'travel', 'vacation', 'hotel', 'flight', 'booking',
+        'weather', 'forecast', 'temperature', 'climate',
+        'sports', 'football', 'basketball', 'soccer', 'game',
+        'movie', 'film', 'actor', 'celebrity', 'entertainment',
+        'news', 'politics', 'election', 'government', 'president'
+    ];
+    
+    const validNameKeywords = [
+        'name', 'baby', 'child', 'meaning', 'origin', 'culture',
+        'traditional', 'modern', 'classic', 'unique', 'popular',
+        'beautiful', 'strong', 'gentle', 'elegant', 'simple',
+        'spiritual', 'religious', 'family', 'heritage', 'ancestry'
+    ];
+    
+    const inputStr = input?.toString().toLowerCase() || '';
+    
+    // Check for inappropriate content
+    for (const keyword of inappropriateKeywords) {
+        if (inputStr.includes(keyword)) {
+            return { isValid: false, error: `Please keep your preferences focused on baby names. Avoid discussing ${keyword}.` };
+        }
+    }
+    
+    // Check for off-topic content
+    for (const keyword of offTopicKeywords) {
+        if (inputStr.includes(keyword)) {
+            return { isValid: false, error: `Please focus on baby name preferences. This field is for describing what you want in a name, not ${keyword}.` };
+        }
+    }
+    
+    // Check if input is relevant to baby names
+    const hasValidKeywords = validNameKeywords.some(keyword => inputStr.includes(keyword));
+    if (!hasValidKeywords && inputStr.length > 20) {
+        return { isValid: false, error: 'Please describe what you\'re looking for in a baby name (e.g., meaning, style, personality traits)' };
+    }
+    
+    // Check for excessive repetition (potential spam)
+    const repeatedChars = inputStr.match(/(.)\1{3,}/g);
+    if (repeatedChars && repeatedChars.length > 0) {
+        return { isValid: false, error: 'Please avoid repeating characters. Describe your preferences naturally.' };
+    }
+    
+    return { isValid: true };
+}
+
+// AI-powered validation function
+async function validateInputsWithAI(nameExpectations: string, likedNames: string, dislikedNames: string) {
+    try {
+        const validationPrompt = `You are a content validator for a baby names app. Analyze the following user inputs and determine if they're appropriate for baby name preferences.
+
+NAME EXPECTATIONS: "${nameExpectations}"
+LIKED NAMES: "${likedNames}"
+DISLIKED NAMES: "${dislikedNames}"
+
+VALIDATION CRITERIA:
+1. Are these inputs related to baby names, parenting, or family preferences?
+2. Is the user asking for help with baby name selection, meaning, origin, or characteristics?
+3. Are these inputs appropriate for a family-friendly app?
+4. Is the user trying to misuse the app for non-baby-name purposes (homework, programming, academic questions, etc.)?
+
+EXAMPLES OF VALID INPUTS:
+- "Looking for a traditional Indian name with spiritual meaning"
+- "Want something modern and trendy for a girl"
+- "Prefer names that are easy to pronounce"
+- "Looking for names that mean strength or courage"
+
+EXAMPLES OF INVALID INPUTS:
+- "How to calculate the speed of light"
+- "Write a Python function to sort arrays"
+- "What's the weather like today?"
+- "Help me with my math homework"
+
+RESPOND WITH JSON ONLY:
+{
+  "isValid": true/false,
+  "error": "Brief explanation if invalid",
+  "suggestions": ["helpful suggestions if invalid"]
+}
+
+Be strict but fair. Focus on intent rather than keywords.`;
+
+        const completion = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [{ 
+                role: "user", 
+                content: validationPrompt
+            }],
+            temperature: 0.1,
+            max_tokens: 200
+        });
+
+        const response = completion.choices[0].message?.content;
+        const validationResult = parseValidationResponse(response || '');
+        
+        return validationResult;
+    } catch (error) {
+        console.error('AI validation error:', error);
+        // Fallback to basic validation
+        return validateInput(nameExpectations);
+    }
+}
+
+function parseValidationResponse(response: string): any {
+    try {
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+        
+        return {
+            isValid: false,
+            error: "Unable to parse validation response",
+            suggestions: ["Please try rephrasing your input"]
+        };
+    } catch (error) {
+        return {
+            isValid: false,
+            error: "Invalid validation response format",
+            suggestions: ["Please try rephrasing your input"]
+        };
+    }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -37,6 +179,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             forceVariety,
             excludePrevious
         });
+
+        // Validate inputs using AI-powered validation
+        const validationResult = await validateInputsWithAI(nameExpectations, likedNames, dislikedNames);
+        if (!validationResult.isValid) {
+            return res.status(400).json({ 
+                error: validationResult.error,
+                suggestions: validationResult.suggestions 
+            });
+        }
 
         // Generate a unique seed for this request to ensure variety
         const requestSeed = randomSeed || Math.floor(Math.random() * 10000);
@@ -100,7 +251,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     
                     Return as a JSON array.`
             }],
-            temperature: 0.95,
+            temperature: 0.9,
             max_tokens: 2500
         });
 
