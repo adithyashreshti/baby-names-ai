@@ -73,13 +73,11 @@ function validateInput(input: any): { isValid: boolean; error?: string } {
 // Simple AI intent validation
 async function validateIntentWithAI(nameExpectations: string, likedNames: string, dislikedNames: string) {
     try {
-        const validationPrompt = `Analyze if this user input is about baby names or something else.
+        const validationPrompt = `Is this user input about baby name preferences or something else?
 
 USER INPUT: "${nameExpectations}"
 LIKED NAMES: "${likedNames}"  
 DISLIKED NAMES: "${dislikedNames}"
-
-Is the user asking for help with baby name selection? Or are they asking about something unrelated like homework, programming, math, science, etc.?
 
 Respond with JSON only:
 {
